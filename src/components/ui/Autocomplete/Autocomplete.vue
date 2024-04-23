@@ -1,17 +1,21 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { RegisteredEntityList, RegisteredEntity } from '@/types'
 
 import BaseTag from '@components/ui/BaseTag.vue';
 import RegisteredEntityItem from '@components/ui/RegisteredEntityItem.vue';
 
 import { useClickOutside } from '@/composables/useClickOutside';
 
-const props = defineProps(['modelValue', 'items']);
+const props = defineProps<{
+  modelValue: string,
+  items: RegisteredEntityList
+}>();
 const emit = defineEmits(['update:modelValue', 'custom-suggestions-request', 'reset-suggestion-list']);
 
 const query = ref('');
 const currentOptionIndex = ref(0);
-const selectedOption = ref(null);
+const selectedOption = ref<RegisteredEntity | null>(null);
 const isDropdownVisible = ref(false);
 
 const options: HTMLLIElement[] = [];
@@ -36,8 +40,9 @@ watch(query, (newQuery: string) => {
   isDropdownVisible.value = true;
 });
 
-watch(selectedOption, (newSelectedOption) => {
+watch(selectedOption, (newSelectedOption: RegisteredEntity | null) => {
   currentOptionIndex.value = 0;
+  
   emit('update:modelValue', newSelectedOption?.alias || '');
 });
 
@@ -82,7 +87,7 @@ const onEnterKeyDownHandler = () => {
   clearQuery();
 }
 
-const selectItemHandler = (item) => {
+const selectItemHandler = (item: RegisteredEntity) => {
   selectedOption.value = item;
   clearQuery();
 }
@@ -115,7 +120,7 @@ const selectItemHandler = (item) => {
       @click="() => selectItemHandler(item)"
       @mouseenter="() => currentOptionIndex = index"
       @mouseleave="() => currentOptionIndex = 0"
-      :ref="(element) => options[index] = element"
+      :ref="(element) => options[index] = element as HTMLLIElement"
     >
       <RegisteredEntityItem :data="item" />
     </li>

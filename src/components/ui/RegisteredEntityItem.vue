@@ -45,10 +45,10 @@ const description = computed(() => {
 }
 
 .registered-entity-item__name {
-  font-weight: 500;
+  color: var(--textDarker);
 }
 
 .registered-entity-item__description {
-  color: #a2a2a2;
+  color: var(--textDefault);
 }
 </style>
