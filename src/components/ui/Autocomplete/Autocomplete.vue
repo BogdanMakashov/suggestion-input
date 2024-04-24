@@ -9,6 +9,7 @@ import { isItem, isHtmlLiElement, isKeyOfItem } from '@/guardians';
 import { useClickOutside } from '@/composables/useClickOutside';
 
 import BaseTag from '@components/ui/BaseTag.vue';
+import BaseLoader from '@components/ui/BaseLoader.vue';
 
 const props = defineProps<{
   modelValue: T,
@@ -17,7 +18,9 @@ const props = defineProps<{
   label: string,
   isRequired?: boolean,
   id: string,
-  name: string
+  name: string,
+  isLoading: boolean,
+  hasError: boolean
 }>();
 const emit = defineEmits(['update:modelValue', 'custom-suggestions-request', 'reset-suggestion-list']);
 
@@ -116,9 +119,9 @@ const selectItemHandler = (item: SuggestionItem<T> | null) => {
   clearQuery();
 }
 
-const computedTagLabel = computed(() => {
+const displayedValueOfModel = computed(() => {
   if (isKeyOfItem<T>(props.tagDisplayKey)) {
-    return `@${props.modelValue?.[props.tagDisplayKey]}`;
+    return props.modelValue?.[props.tagDisplayKey];
   }
 });
 
@@ -133,7 +136,7 @@ const setListItemRef = (element: Element | ComponentPublicInstance | null, index
 <div class="autocomplete" ref="autocompleteRef">
   <input 
     type="hidden" 
-    :value="props.modelValue" 
+    :value="displayedValueOfModel" 
     class="autocomplete__hidden-input" 
     :required="isRequired"
   >
@@ -143,15 +146,16 @@ const setListItemRef = (element: Element | ComponentPublicInstance | null, index
     {{ label }}
   </label>
 
-  <div class="autocomplete__wrapper">
+  <div class="autocomplete__wrapper" :class="{ 'autocomplete__wrapper--error': hasError }">
     <BaseTag 
       v-show="!!props.modelValue" 
       @click="removeTagHandler"
     >
-      {{ computedTagLabel }}
+      {{ `@${displayedValueOfModel}` }}
     </BaseTag>
 
-    <input 
+    <input
+      tabindex="0"
       type="text"
       v-model="query"
       @keydown.up.prevent="onUpKeyDownHandler"
@@ -162,6 +166,10 @@ const setListItemRef = (element: Element | ComponentPublicInstance | null, index
       :name="name"
       :id="id"
     >
+
+    <div class="autocomplete__loader" v-show="isLoading">
+      <BaseLoader />
+    </div>
   </div>
 
   <ul 
@@ -195,11 +203,16 @@ const setListItemRef = (element: Element | ComponentPublicInstance | null, index
 
 .autocomplete__wrapper {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   border: 1px solid var(--neutral);
   border-radius: var(--roundS);
   height: 48px;
   padding: 4px;
+  position: relative;
+}
+
+.autocomplete__wrapper--error {
+  border-color: var(--red);
 }
 
 .autocomplete__input {
@@ -233,6 +246,13 @@ const setListItemRef = (element: Element | ComponentPublicInstance | null, index
 }
 
 .autocomplete__required-star {
-  color: var(--requireStar);
+  color: var(--red);
+}
+
+.autocomplete__loader {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translate(0, -50%);
 }
 </style>

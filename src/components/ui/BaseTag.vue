@@ -25,9 +25,9 @@ const onClickHandler = () => {
   align-items: center;
   border-radius: var(--roundS);
   padding: 4px;
-  background-color: var(--tagDefault);
+  background-color: var(--secondary);
   font-size: 14px;
-  color: var(--lightPrimary);
+  color: var(--primary);
 }
 
 .base-tag__remove-button {
@@ -39,7 +39,7 @@ const onClickHandler = () => {
   padding: 0;
   width: 24px;
   height: 24px;
-  color: var(--lightPrimary);
+  color: var(--primary);
   cursor: pointer;
 }
 </style>

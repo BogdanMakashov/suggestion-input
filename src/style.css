@@ -1,16 +1,16 @@
 @import './normalize.css';
 
 :root {
-  --lightPrimary: #ffffff;
+  --primary: #ffffff;
+  --secondary: #8ca9bc;
   --neutral: #eeeeee;
-  --tagDefault: #8ca9bc;
   --boxShadowDefault: rgba(12, 11, 11, 0.2) 0px 2px 8px 0px;
   --textDefault: #565656;
   --textDarker: #1d1d1d;
   --roundS: 4px;
   --roundM: 8px;
   --font: "Open Sans", sans-serif;
-  --requireStar: #ff0000;
+  --red: #ff0000;
 }
 
 *, *::before, *::after {

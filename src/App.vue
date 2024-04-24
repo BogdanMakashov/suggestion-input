@@ -6,20 +6,28 @@ import RegisteredEntityItem from '@components/ui/RegisteredEntityItem.vue';
 
 import { RegisteredEntity } from '@/types';
 
-const { registeredEntityList, getRegisteredEntityList, resetRegisteredEntityList } = useRegisteredEntity();
+const { 
+  registeredEntityList,
+  getRegisteredEntityList,
+  resetRegisteredEntityList,
+  isLoading,
+  hasError
+} = useRegisteredEntity();
 const selectedEntity = ref<RegisteredEntity | null>(null);
 </script>
 
 <template>
   <div class="container">
     <Autocomplete
+      v-model="selectedEntity"
       isRequired
       id="company-or-user"
       label="Пользователь или компания"
       name="company-or-user"
-      v-model="selectedEntity"
-      :items="registeredEntityList"
       tagDisplayKey="alias"
+      :items="registeredEntityList"
+      :isLoading="isLoading"
+      :hasError="hasError"
       @custom-suggestions-request="getRegisteredEntityList" 
       @reset-suggestion-list="resetRegisteredEntityList"
     >
