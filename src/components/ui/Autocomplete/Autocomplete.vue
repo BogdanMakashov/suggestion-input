@@ -1,33 +1,33 @@
-<script setup lang="ts">
-import { ref, watch } from 'vue';
-import { RegisteredEntityList, RegisteredEntity } from '@/types'
+<script setup lang="ts" generic="T">
+import { ref, watch, computed } from 'vue';
 
-import BaseTag from '@components/ui/BaseTag.vue';
-import RegisteredEntityItem from '@components/ui/RegisteredEntityItem.vue';
+import type { SuggestionItem } from '@/types';
 
+import { getUniqueId } from '@/helpers';
 import { useClickOutside } from '@/composables/useClickOutside';
 
+import BaseTag from '@components/ui/BaseTag.vue';
+
 const props = defineProps<{
-  modelValue: string,
-  items: RegisteredEntityList
+  modelValue: T,
+  items: T[],
+  tagDisplayKey: string,
+  label: string,
+  isRequired?: boolean,
+  id: string,
+  name: string
 }>();
 const emit = defineEmits(['update:modelValue', 'custom-suggestions-request', 'reset-suggestion-list']);
 
 const query = ref('');
 const currentOptionIndex = ref(0);
-const selectedOption = ref<RegisteredEntity | null>(null);
 const isDropdownVisible = ref(false);
-
-const options: HTMLLIElement[] = [];
 const suggestionListRef = ref<HTMLElement | null>(null);
 const autocompleteRef = ref<HTMLElement | null>(null);
 
-useClickOutside(
-  autocompleteRef,
-  () => {
-    isDropdownVisible.value = false
-  },
-);
+const options = ref<HTMLLIElement[]>([]);
+
+useClickOutside(autocompleteRef, () => isDropdownVisible.value = false);
 
 watch(query, (newQuery: string) => {
   if (newQuery.length <= 3 || !newQuery.length) {
@@ -40,14 +40,19 @@ watch(query, (newQuery: string) => {
   isDropdownVisible.value = true;
 });
 
-watch(selectedOption, (newSelectedOption: RegisteredEntity | null) => {
-  currentOptionIndex.value = 0;
-  
-  emit('update:modelValue', newSelectedOption?.alias || '');
+const itemsWithKeys = computed(() => {
+  return props.items.map((item) => ({
+    ...item,
+    _key: getUniqueId(),
+  }))
+});
+
+const itemHeight = computed(() => {
+  return `${options.value[0]?.getBoundingClientRect().height}px` || 0;
 });
 
 const scrollToOption = () => {
-  const currentOptionScrollTop = options?.[currentOptionIndex.value]?.offsetTop;
+  const currentOptionScrollTop = options?.value?.[currentOptionIndex.value]?.offsetTop;
 
   if (!suggestionListRef.value) {
     return;
@@ -58,12 +63,18 @@ const scrollToOption = () => {
   });
 }
 
+const cleanItemFromKey = (itemWithKey: SuggestionItem<T>): T => {
+  const { _key, ...item} = itemWithKey;
+
+  return item as T;
+}
+
 const clearQuery = () => {
   query.value = '';
 }
 
 const removeTagHandler = () => {
-  selectedOption.value = null;
+  emit('update:modelValue', null);
 }
 
 const onUpKeyDownHandler = () => {
@@ -81,24 +92,49 @@ const onDownKeyDownHandler = () => {
 }
 
 const onEnterKeyDownHandler = () => {
-  const currentItem = props.items[currentOptionIndex.value];
+  const currentItem = props.items[currentOptionIndex.value] || null;
 
-  selectedOption.value = currentItem;
+  if (!currentItem) {
+    return;
+  }
+
+  emit('update:modelValue', currentItem);
+  
   clearQuery();
 }
 
-const selectItemHandler = (item: RegisteredEntity) => {
-  selectedOption.value = item;
+const selectItemHandler = (item: SuggestionItem<T> | null) => {
+  if (!item) {
+    return;
+  }
+
+  emit('update:modelValue', cleanItemFromKey(item));
+
   clearQuery();
 }
 </script>
 
 <template>
 <div class="autocomplete" ref="autocompleteRef">
-  <input type="hidden" :value="props.modelValue" class="autocomplete__hidden-input">
+  <input 
+    type="hidden" 
+    :value="props.modelValue" 
+    class="autocomplete__hidden-input" 
+    :required="isRequired"
+  >
+
+  <label :for="id" class="autocomplete__label">
+    <span class="autocomplete__required-star" v-if="isRequired">*</span>
+    {{ label }}
+  </label>
 
   <div class="autocomplete__wrapper">
-    <BaseTag v-show="!!props.modelValue" @click="removeTagHandler">{{ `@${props.modelValue}` }}</BaseTag>
+    <BaseTag 
+      v-show="!!props.modelValue" 
+      @click="removeTagHandler"
+    >
+      {{ `@${props.modelValue?.[props.tagDisplayKey as keyof T]}` }}
+    </BaseTag>
 
     <input 
       type="text"
@@ -108,13 +144,20 @@ const selectItemHandler = (item: RegisteredEntity) => {
       @keydown.enter.prevent="onEnterKeyDownHandler"
       @focus="isDropdownVisible = true"
       class="autocomplete__input"
+      :name="name"
+      :id="id"
     >
   </div>
 
-  <ul class="autocomplete__suggestions" v-show="props.items.length && isDropdownVisible" ref="suggestionListRef">
+  <ul 
+    class="autocomplete__suggestions" 
+    v-show="props.items.length && isDropdownVisible" 
+    ref="suggestionListRef" 
+    role="listbox"
+  >
     <li 
-      v-for="item, index in items"
-      :key="item.alias"
+      v-for="item, index in itemsWithKeys"
+      :key="item._key"
       class="autocomplete__suggestions-item"
       :class="{ 'autocomplete__suggestions-item--active': currentOptionIndex === index }"
       @click="() => selectItemHandler(item)"
@@ -122,7 +165,7 @@ const selectItemHandler = (item: RegisteredEntity) => {
       @mouseleave="() => currentOptionIndex = 0"
       :ref="(element) => options[index] = element as HTMLLIElement"
     >
-      <RegisteredEntityItem :data="item" />
+      <slot name="item" v-bind="item"></slot>
     </li>
   </ul>
 </div>
@@ -130,24 +173,25 @@ const selectItemHandler = (item: RegisteredEntity) => {
 
 <style scoped>
 .autocomplete {
+  position: relative;
   width: 100%;
   max-width: 400px;
-  position: relative;
 }
 
 .autocomplete__wrapper {
-  border: 1px solid var(--neutral);
-  border-radius: var(--roundS);
   display: flex;
   align-items: stretch;
+  border: 1px solid var(--neutral);
+  border-radius: var(--roundS);
   height: 48px;
   padding: 4px;
 }
 
 .autocomplete__input {
-  height: 100%;
   border: none;
   outline: none;
+  width: 100%;
+  height: 100%;
   padding: 0 4px;
 }
 
@@ -159,12 +203,21 @@ const selectItemHandler = (item: RegisteredEntity) => {
   position: absolute;
   top: 100%;
   left: 0;
-  width: 100%;
+  overflow: auto;
   margin: 0;
+  box-shadow: var(--boxShadowDefault);
+  width: 100%;
+  height: calc(v-bind(itemHeight) * 4);
   padding: 0;
   list-style-type: none;
-  box-shadow: var(--boxShadowDefault);
-  height: calc(72px * 4);
-  overflow: auto;
+}
+
+.autocomplete__label {
+  display: inline-block;
+  margin-bottom: 12px;
+}
+
+.autocomplete__required-star {
+  color: var(--requireStar);
 }
 </style>

@@ -1,8 +1,5 @@
-export const debounce = <T extends (...args: any[]) => any>(
-  callback: T,
-  ms: number
-) => {
-  let timer: number | null = null;
+export const debounce = <T extends (...args: any[]) => any>(callback: T, ms: number) => {
+  let timer: ReturnType<typeof setTimeout> | null = null;
 
   return (...args: Parameters<T>) => {
     if (timer) {
@@ -11,4 +8,13 @@ export const debounce = <T extends (...args: any[]) => any>(
 
     timer = setTimeout(() => callback(...args), ms);
   };
+};
+
+export const getUniqueId = () => {
+  const s4 = () =>
+    Math.floor((1 + Math.random()) * 0x10000)
+      .toString(16)
+      .substring(1);
+
+  return `${s4() + s4()}-${s4()}-${s4()}-${s4()}-${s4() + s4() + s4()}`;
 };

@@ -21,25 +21,25 @@ const onClickHandler = () => {
 
 <style scoped>
 .base-tag {
-  padding: 4px;
-  background-color: var(--tagDefault);
-  color: var(--lightPrimary);
   display: flex;
   align-items: center;
   border-radius: var(--roundS);
+  padding: 4px;
+  background-color: var(--tagDefault);
   font-size: 14px;
+  color: var(--lightPrimary);
 }
 
 .base-tag__remove-button {
-  background: none;
-  border: none;
-  padding: 0;
-  color: var(--lightPrimary);
-  height: 24px;
-  width: 24px;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  color: var(--lightPrimary);
+  cursor: pointer;
 }
 </style>

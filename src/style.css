@@ -10,6 +10,7 @@
   --roundS: 4px;
   --roundM: 8px;
   --font: "Open Sans", sans-serif;
+  --requireStar: #ff0000;
 }
 
 *, *::before, *::after {

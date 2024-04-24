@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import type { RegisteredEntity } from '@/types';
 import { RegisteredEntityType } from '@/enums';
+import noPhoto from '@assets/no-photo.png';
 
 const props = defineProps<{
   data: RegisteredEntity
@@ -15,7 +16,7 @@ const description = computed(() => {
 <template>
   <div class="registered-entity-item">
     <div class="registered-entity-item__avatar-wrapper">
-      <img :src="data.avatar || ''" alt="" class="registered-entity-item__avatar">
+      <img :src="data.avatar || noPhoto" alt="" class="registered-entity-item__avatar">
     </div>
 
     <div class="registered-entity-item__content-wrapper">
@@ -27,15 +28,15 @@ const description = computed(() => {
 
 <style scoped>
 .registered-entity-item {
-  padding: 16px;
   display: flex;
   align-items: center;
+  padding: 16px;
 }
 
 .registered-entity-item__avatar-wrapper {
+  margin-right: 12px;
   width: 40px;
   height: 40px;
-  margin-right: 12px;
 }
 
 .registered-entity-item__avatar {

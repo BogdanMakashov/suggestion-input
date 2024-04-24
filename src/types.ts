@@ -8,3 +8,7 @@ export type RegisteredEntity = {
 };
 
 export type RegisteredEntityList = RegisteredEntity[];
+
+export type SuggestionItem<T> = T & {
+  _key: string;
+};
