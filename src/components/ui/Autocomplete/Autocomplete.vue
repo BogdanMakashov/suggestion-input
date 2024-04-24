@@ -1,9 +1,11 @@
 <script setup lang="ts" generic="T">
 import { ref, watch, computed } from 'vue';
 
+import type { ComponentPublicInstance } from 'vue';
 import type { SuggestionItem } from '@/types';
 
 import { getUniqueId } from '@/helpers';
+import { isItem, isHtmlLiElement, isKeyOfItem } from '@/guardians';
 import { useClickOutside } from '@/composables/useClickOutside';
 
 import BaseTag from '@components/ui/BaseTag.vue';
@@ -24,7 +26,6 @@ const currentOptionIndex = ref(0);
 const isDropdownVisible = ref(false);
 const suggestionListRef = ref<HTMLElement | null>(null);
 const autocompleteRef = ref<HTMLElement | null>(null);
-
 const options = ref<HTMLLIElement[]>([]);
 
 useClickOutside(autocompleteRef, () => isDropdownVisible.value = false);
@@ -63,10 +64,12 @@ const scrollToOption = () => {
   });
 }
 
-const cleanItemFromKey = (itemWithKey: SuggestionItem<T>): T => {
+const cleanItemFromKey = (itemWithKey: SuggestionItem<T>) => {
   const { _key, ...item} = itemWithKey;
 
-  return item as T;
+  if (isItem<T>(item)) {
+    return item;
+  }
 }
 
 const clearQuery = () => {
@@ -112,6 +115,18 @@ const selectItemHandler = (item: SuggestionItem<T> | null) => {
 
   clearQuery();
 }
+
+const computedTagLabel = computed(() => {
+  if (isKeyOfItem<T>(props.tagDisplayKey)) {
+    return `@${props.modelValue?.[props.tagDisplayKey]}`;
+  }
+});
+
+const setListItemRef = (element: Element | ComponentPublicInstance | null, index: number) => {
+  if (isHtmlLiElement(element)) {
+    options.value[index] = element;
+  }
+}
 </script>
 
 <template>
@@ -133,7 +148,7 @@ const selectItemHandler = (item: SuggestionItem<T> | null) => {
       v-show="!!props.modelValue" 
       @click="removeTagHandler"
     >
-      {{ `@${props.modelValue?.[props.tagDisplayKey as keyof T]}` }}
+      {{ computedTagLabel }}
     </BaseTag>
 
     <input 
@@ -160,10 +175,10 @@ const selectItemHandler = (item: SuggestionItem<T> | null) => {
       :key="item._key"
       class="autocomplete__suggestions-item"
       :class="{ 'autocomplete__suggestions-item--active': currentOptionIndex === index }"
+      :ref="(element) => setListItemRef(element, index)"
       @click="() => selectItemHandler(item)"
       @mouseenter="() => currentOptionIndex = index"
       @mouseleave="() => currentOptionIndex = 0"
-      :ref="(element) => options[index] = element as HTMLLIElement"
     >
       <slot name="item" v-bind="item"></slot>
     </li>
