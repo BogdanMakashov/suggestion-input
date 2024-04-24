@@ -13,7 +13,7 @@ const {
   isLoading,
   hasError
 } = useRegisteredEntity();
-const selectedEntity = ref<RegisteredEntity | null>(null);
+const selectedEntity = ref<RegisteredEntity[]>([]);
 </script>
 
 <template>

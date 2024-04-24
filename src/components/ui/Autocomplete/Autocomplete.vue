@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T">
-import { ref, watch, computed } from 'vue';
+import { ref, toRaw, watch, computed } from 'vue';
 
 import type { ComponentPublicInstance } from 'vue';
 import type { SuggestionItem } from '@/types';
@@ -12,7 +12,7 @@ import BaseTag from '@components/ui/BaseTag.vue';
 import BaseLoader from '@components/ui/BaseLoader.vue';
 
 const props = defineProps<{
-  modelValue: T,
+  modelValue: T[],
   items: T[],
   tagDisplayKey: string,
   label: string,
@@ -20,7 +20,8 @@ const props = defineProps<{
   id: string,
   name: string,
   isLoading: boolean,
-  hasError: boolean
+  hasError: boolean,
+  isMultiple?: boolean
 }>();
 const emit = defineEmits(['update:modelValue', 'custom-suggestions-request', 'reset-suggestion-list']);
 
@@ -30,6 +31,8 @@ const isDropdownVisible = ref(false);
 const suggestionListRef = ref<HTMLElement | null>(null);
 const autocompleteRef = ref<HTMLElement | null>(null);
 const options = ref<HTMLLIElement[]>([]);
+
+// const proxyModelValue = toRef(props, 'modelValue'); //TODO: Тут бы DeepClone добавить
 
 useClickOutside(autocompleteRef, () => isDropdownVisible.value = false);
 
@@ -67,20 +70,28 @@ const scrollToOption = () => {
   });
 }
 
-const cleanItemFromKey = (itemWithKey: SuggestionItem<T>) => {
+const cleanItemFromKey = (itemWithKey: SuggestionItem<T>): T | void => {
   const { _key, ...item} = itemWithKey;
 
-  if (isItem<T>(item)) {
-    return item;
+  if (!isItem<T>(item)) {
+    return;
   }
+
+  return item;
 }
 
 const clearQuery = () => {
   query.value = '';
 }
 
-const removeTagHandler = () => {
-  emit('update:modelValue', null);
+const removeTagHandler = (tag: keyof T) => {
+  const modelWithoutItem = props.modelValue.filter((modelItem) => {
+    if (isKeyOfItem<T>(props.tagDisplayKey)) {
+      return toRaw(modelItem)[props.tagDisplayKey] !== tag;
+    }
+  });
+
+  emit('update:modelValue', modelWithoutItem);
 }
 
 const onUpKeyDownHandler = () => {
@@ -97,6 +108,28 @@ const onDownKeyDownHandler = () => {
   }
 }
 
+const isModelIncludesItem = (item: T) => {
+  return !!props.modelValue.find((modelItem) => {
+    if (isKeyOfItem<T>(props.tagDisplayKey)) {
+      return toRaw(modelItem)[props.tagDisplayKey] === item[props.tagDisplayKey];
+    }
+  });
+}
+
+const pushItemToModel = (item: T) => {
+  if (!item || isModelIncludesItem(item)) {
+    return;
+  }
+
+  const tempModel = !props.isMultiple && props.modelValue.length > 0 ? [] : props.modelValue.map((modelItem) => structuredClone(toRaw(modelItem)));
+
+  tempModel.push(item);
+
+  emit('update:modelValue', tempModel);
+
+  clearQuery();
+}
+
 const onEnterKeyDownHandler = () => {
   const currentItem = props.items[currentOptionIndex.value] || null;
 
@@ -104,9 +137,9 @@ const onEnterKeyDownHandler = () => {
     return;
   }
 
-  emit('update:modelValue', currentItem);
-  
-  clearQuery();
+  if (currentItem) {
+    pushItemToModel(currentItem);
+  }
 }
 
 const selectItemHandler = (item: SuggestionItem<T> | null) => {
@@ -114,15 +147,28 @@ const selectItemHandler = (item: SuggestionItem<T> | null) => {
     return;
   }
 
-  emit('update:modelValue', cleanItemFromKey(item));
+  const cleanedItem = cleanItemFromKey(item);
 
-  clearQuery();
+  if (cleanedItem) {
+    pushItemToModel(cleanedItem);
+  }
+
 }
 
+const tagsFromModel = computed(() => {
+  return props.modelValue.map((item) => {
+    if (isKeyOfItem<T>(props.tagDisplayKey)) {
+      return item[props.tagDisplayKey];
+    }
+  });
+});
+
 const displayedValueOfModel = computed(() => {
-  if (isKeyOfItem<T>(props.tagDisplayKey)) {
-    return props.modelValue?.[props.tagDisplayKey];
-  }
+  return props.modelValue.map((item) => {
+    if (isKeyOfItem<T>(props.tagDisplayKey)) {
+      return item[props.tagDisplayKey];
+    }
+  }).join(', ');
 });
 
 const setListItemRef = (element: Element | ComponentPublicInstance | null, index: number) => {
@@ -147,12 +193,15 @@ const setListItemRef = (element: Element | ComponentPublicInstance | null, index
   </label>
 
   <div class="autocomplete__wrapper" :class="{ 'autocomplete__wrapper--error': hasError }">
-    <BaseTag 
-      v-show="!!props.modelValue" 
-      @click="removeTagHandler"
-    >
-      {{ `@${displayedValueOfModel}` }}
-    </BaseTag>
+    <div class="autocomplete__tag" v-for="tag in tagsFromModel">
+      <BaseTag @click="() => {
+          if (isKeyOfItem(tag)) {
+            removeTagHandler(tag);
+          }
+        }">
+        {{ `@${tag}` }}
+      </BaseTag>
+    </div>
 
     <input
       tabindex="0"
@@ -180,9 +229,13 @@ const setListItemRef = (element: Element | ComponentPublicInstance | null, index
   >
     <li 
       v-for="item, index in itemsWithKeys"
-      :key="item._key"
+      role="option"
       class="autocomplete__suggestions-item"
-      :class="{ 'autocomplete__suggestions-item--active': currentOptionIndex === index }"
+      :key="item._key"
+      :class="{ 
+        'autocomplete__suggestions-item--active': currentOptionIndex === index, 
+        'autocomplete__suggestions-item--selected': isModelIncludesItem(item) 
+      }"
       :ref="(element) => setListItemRef(element, index)"
       @click="() => selectItemHandler(item)"
       @mouseenter="() => currentOptionIndex = index"
@@ -204,11 +257,13 @@ const setListItemRef = (element: Element | ComponentPublicInstance | null, index
 .autocomplete__wrapper {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   border: 1px solid var(--neutral);
   border-radius: var(--roundS);
-  height: 48px;
+  min-height: 48px;
   padding: 4px;
   position: relative;
+  gap: 4px;
 }
 
 .autocomplete__wrapper--error {
@@ -218,13 +273,21 @@ const setListItemRef = (element: Element | ComponentPublicInstance | null, index
 .autocomplete__input {
   border: none;
   outline: none;
-  width: 100%;
   height: 100%;
-  padding: 0 4px;
+  flex: 1;
+}
+
+.autocomplete__suggestions-item {
+  cursor: pointer;
 }
 
 .autocomplete__suggestions-item--active {
   background-color: var(--neutral);
+}
+
+.autocomplete__suggestions-item--selected {
+  background-color: var(--secondary);
+  cursor: not-allowed;
 }
 
 .autocomplete__suggestions {
@@ -235,7 +298,7 @@ const setListItemRef = (element: Element | ComponentPublicInstance | null, index
   margin: 0;
   box-shadow: var(--boxShadowDefault);
   width: 100%;
-  height: calc(v-bind(itemHeight) * 4);
+  height: calc(72px * 4);
   padding: 0;
   list-style-type: none;
 }

@@ -43,6 +43,7 @@ const description = computed(() => {
   max-width: 40px;
   max-height: 40px;
   object-fit: cover;
+  border-radius: var(--roundS);
 }
 
 .registered-entity-item__name {
