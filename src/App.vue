@@ -25,6 +25,8 @@ const selectedEntity = ref<RegisteredEntity[]>([]);
       label="Пользователь или компания"
       name="company-or-user"
       tagDisplayKey="alias"
+      isMultiple
+      :itemsWithoutScroll="2"
       :items="registeredEntityList"
       :isLoading="isLoading"
       :hasError="hasError"

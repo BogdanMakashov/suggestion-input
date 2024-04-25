@@ -1,8 +1,8 @@
 <script setup lang="ts" generic="T">
-import { ref, toRaw, watch, computed } from 'vue';
+import { ref, toRaw, watch, computed, nextTick } from 'vue';
 
 import type { ComponentPublicInstance } from 'vue';
-import type { SuggestionItem } from '@/types';
+import type { SuggestionItem, AutoCompleteProps } from './types';
 
 import { getUniqueId } from '@/helpers';
 import { isItem, isHtmlLiElement, isKeyOfItem } from '@/guardians';
@@ -11,18 +11,9 @@ import { useClickOutside } from '@/composables/useClickOutside';
 import BaseTag from '@components/ui/BaseTag.vue';
 import BaseLoader from '@components/ui/BaseLoader.vue';
 
-const props = defineProps<{
-  modelValue: T[],
-  items: T[],
-  tagDisplayKey: string,
-  label: string,
-  isRequired?: boolean,
-  id: string,
-  name: string,
-  isLoading: boolean,
-  hasError: boolean,
-  isMultiple?: boolean
-}>();
+const props = withDefaults(defineProps<AutoCompleteProps<T>>(), {
+  itemsWithoutScroll: 4
+});
 const emit = defineEmits(['update:modelValue', 'custom-suggestions-request', 'reset-suggestion-list']);
 
 const query = ref('');
@@ -31,8 +22,7 @@ const isDropdownVisible = ref(false);
 const suggestionListRef = ref<HTMLElement | null>(null);
 const autocompleteRef = ref<HTMLElement | null>(null);
 const options = ref<HTMLLIElement[]>([]);
-
-// const proxyModelValue = toRef(props, 'modelValue'); //TODO: Тут бы DeepClone добавить
+const listHeight = ref('0');
 
 useClickOutside(autocompleteRef, () => isDropdownVisible.value = false);
 
@@ -47,15 +37,17 @@ watch(query, (newQuery: string) => {
   isDropdownVisible.value = true;
 });
 
+watch(options, async (newValue) => {
+  await nextTick();
+
+  listHeight.value = `${newValue[0]?.clientHeight * props.itemsWithoutScroll}px`;
+}, { deep: true });
+
 const itemsWithKeys = computed(() => {
   return props.items.map((item) => ({
     ...item,
     _key: getUniqueId(),
   }))
-});
-
-const itemHeight = computed(() => {
-  return `${options.value[0]?.getBoundingClientRect().height}px` || 0;
 });
 
 const scrollToOption = () => {
@@ -80,9 +72,7 @@ const cleanItemFromKey = (itemWithKey: SuggestionItem<T>): T | void => {
   return item;
 }
 
-const clearQuery = () => {
-  query.value = '';
-}
+const clearQuery = () => query.value = '';
 
 const removeTagHandler = (tag: keyof T) => {
   const modelWithoutItem = props.modelValue.filter((modelItem) => {
@@ -194,11 +184,7 @@ const setListItemRef = (element: Element | ComponentPublicInstance | null, index
 
   <div class="autocomplete__wrapper" :class="{ 'autocomplete__wrapper--error': hasError }">
     <div class="autocomplete__tag" v-for="tag in tagsFromModel">
-      <BaseTag @click="() => {
-          if (isKeyOfItem(tag)) {
-            removeTagHandler(tag);
-          }
-        }">
+      <BaseTag @click="isKeyOfItem(tag) ? removeTagHandler(tag) : null">
         {{ `@${tag}` }}
       </BaseTag>
     </div>
@@ -298,7 +284,7 @@ const setListItemRef = (element: Element | ComponentPublicInstance | null, index
   margin: 0;
   box-shadow: var(--boxShadowDefault);
   width: 100%;
-  height: calc(72px * 4);
+  height: v-bind(listHeight);
   padding: 0;
   list-style-type: none;
 }
