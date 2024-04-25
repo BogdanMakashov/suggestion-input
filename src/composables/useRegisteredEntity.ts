@@ -10,6 +10,7 @@ export const useRegisteredEntity = () => {
 
   const getRegisteredEntityList = debounce(async (query: string) => {
     try {
+      hasError.value = false;
       isLoading.value = true;
       const response = await fetch(`https://habr.com/kek/v2/publication/suggest-mention?q=${query}`);
       const { data } = await response.json();
